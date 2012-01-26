@@ -22,6 +22,7 @@ class ExtendedSimpleCommand extends SimpleCommand
 		
 		$this->view 		= isset( $_REQUEST['view'] ) 			? strtolower(trim($_REQUEST['view'])) 	: "home";
 		$this->command 		= isset( $_REQUEST['command'] )			? strtolower(trim($_REQUEST['command']))	: "";
+		$this->id	 		= isset( $_REQUEST['id'] )				? intval($_REQUEST['id'])	: 0;
 		
 		$base_includes 	 	= $this->facade->retrieveProxy( IncludesProxy::NAME )->includes( "jquery" );	
 		$base_inits	  		= '';
@@ -30,42 +31,30 @@ class ExtendedSimpleCommand extends SimpleCommand
 		$this->inits 		= $base_inits;
 		
 		$this->module		= "";
-		$this->site_title 	= "BP GBLS";
+		$this->site_title 	= "PureMVC Template";
 		$this->logout_link	= constructURL("login.php", array( array("command", "logout") ) );
 		
-		$this->container	= $this->facade->retrieveProxy( TemplateProxy::NAME )->loadFile( HTML.'common/container.html' );
-		
-		ob_start(); // start output buffer
-		include HTML.'common/header.php';
-		$this->header = ob_get_contents(); // get contents of buffer
-		ob_end_clean();
-		
-		ob_start(); // start output buffer
-		include HTML.'common/footer.php';
-		$this->footer = ob_get_contents(); // get contents of buffer
-		ob_end_clean();
-		
-				
+		$this->container	= $this->loadFile( HTML.'common/container.html' );		
+		$this->header 		= $this->loadFile( HTML.'common/header.html' );		
+		$this->footer 		= $this->loadFile( HTML.'common/footer.html' );				
 	}
 	
-	public function execute( INotification $notification ){}
-	
-	public function buildSecNavBar( $links=array() ){
-		$html = "";
-		$i = 1;
-		$numItems = count($links);
-		foreach( $links as $link )
-		{
-			$name 	= $link[0];
-			$lname	= $link[1];
-			$class	= ( $lname == $this->sub_view || ($this->sub_view == "" && $i==1 )) ? "selected" : "";
-			$class .= ( $i == 1 ) 			? " first" 	: "";
-			$class .= ( $i == $numItems ) 	? " last" 	: "";
-			$html .= "<li><a href='/{VIEW}/$lname' class='$class'>$name</a></li>";
-			$i++;
-		}
+	public function execute( INotification $notification ){		
+		$this->loginCheck();
+	}
 		
-		$this->secnavbar = $html;
+	
+	protected function menuBreadcrumb( $links )
+	{
+		$i = 1;
+		$html = "";
+		foreach( $links as $l )
+		{
+			$html.= $l;			
+			if( $i < sizeof( $links ) ) $html.= "<div class='breadcrumb_arrow'>&gt;</div>";
+			$i+=1;
+		}
+		return "<div class='fleft'>You are here:&nbsp;</div>" . $html;
 	}
 	
 	protected function getUniversalTokens()
@@ -91,6 +80,33 @@ class ExtendedSimpleCommand extends SimpleCommand
 			exit();			
 		}
 	}
+	
+	protected function loadFile( $file ){ return $this->facade->retrieveProxy( TemplateProxy::NAME )->loadFile( $file ); }
+	
+	protected function buildPage()
+	{
+		$args = func_get_args();
+		//Select the template
+		$this->facade->sendNotification( ApplicationFacade::TEMPLATE, $this->container );
+				
+		$this->facade->sendNotification( ApplicationFacade::TOKENIZE, array( '{CONTENT}' => $this->content ) );
+		
+		//Add pre-universal tokens
+		foreach($this->pre_tokens as $pre_t)
+			if(is_array($pre_t)) 
+				$this->facade->sendNotification( ApplicationFacade::TOKENIZE, $pre_t );
+		
+		//Add universal tokens
+		$this->facade->sendNotification( ApplicationFacade::TOKENIZE, $this->getUniversalTokens() );
+		
+		//Add post-universal tokens
+		foreach($this->post_tokens as $post_t)
+			if(is_array($post_t)) 
+				$this->facade->sendNotification( ApplicationFacade::TOKENIZE, $post_t );
+		
+		//Render page
+		$this->facade->sendNotification( ApplicationFacade::RENDER );
+	}	
 	
 	
 }

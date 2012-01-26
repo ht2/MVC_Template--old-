@@ -3,7 +3,8 @@ class OverviewCommand extends ExtendedSimpleCommand
 {
 	public function execute( INotification $notification )
 	{	
-		$this->loginCheck();
+		parent::execute( $notification);
+		
 		$this->module = "home";
 		
 		$content = "Logged in ".easylink("(logout)", $this->logout_link );

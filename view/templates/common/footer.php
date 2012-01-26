@@ -1,1 +1,0 @@
-Copyright HT2 <?php echo date('Y'); ?>
